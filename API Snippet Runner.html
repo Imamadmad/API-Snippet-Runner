@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<!-- saved from url=(0165)file:///C:/Users/Madeleine/AppData/Local/Packages/microsoft.windowscommunicationsapps_8wekyb3d8bbwe/LocalState/Files/S0/26352/Attachments/index_recursive[26484].html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+		<title>API Snippet Runner</title>
+		
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script>
+            // Get details of the submitted query
+            multiQuery = function () {
+                try {
+                    // Grab the values from the form
+                    let method = $('#method').val();
+                    let uri = $('#uri').val();
+                    let body = $('#body').val() ? JSON.parse($('#body').val()) : "";
+                    let auth = "Basic " + btoa($('#user').val() + ":" + $('#pass').val());
+                    let max = $('#max').val();
+                    let syncType = $('#sync').val();
+                    
+                    console.log({
+                        uri 	: uri,
+                        method	: method,
+                        body	: body,
+                        auth    : auth,
+                        max     : max
+                    });
+                    
+                    let bodyString = body;
+                    if (method !== "GET") {
+                        bodyString = JSON.stringify(body);
+                    }
+                        
+                    // Update the API Runner URL so that request history can be maintained
+                    if (history.pushState) {
+                        let urlParams = new URLSearchParams(window.location.search);
+                        urlParams.set('method', method)
+                        urlParams.set('uri', uri);
+                        urlParams.set('body', JSON.stringify(body));
+                        
+                        var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?' + urlParams.toString();
+                        window.history.pushState({path:newurl},'',newurl);
+                    }
+                    
+                    // Display something while waiting for the request to send and return
+                    $('#output').text("Sending...");
+
+                    if (syncType === "asynchronous") {
+                        loopMe(uri, method, bodyString, auth, max);
+                    } else {
+                        recurseMe(uri, method, bodyString, auth, 1, max);
+                    }
+
+                } catch(err) { // Make sure errors don't have unintended consequences such as passwords in the URL...
+                    console.log(err);
+                    $('#output').text("Something went wrong in the code: \n\n" + err.message);
+                }
+            }
+            
+            // Send synchronous query
+            recurseMe = function (uri, method, body, auth, limit, max) {
+                if (limit < max) {
+                    // And off it goes!
+                    $.ajax({
+                        url 	: uri,
+                        type	: method,
+                        data	: body,
+                        contentType: "application/json",
+                        headers: {"Authorization": auth}
+
+                    }).done(function(data) {
+                        $('#output').text(JSON.stringify(data, null, 4));
+                        recurseMe(uri, method, body, auth, limit + 1, max);
+
+                    }).fail(function(data) {
+                        $('#output').text("Failed on " + limit + " with error " + JSON.stringify(data, null, 4));
+                    });
+
+                } else {
+                    $.ajax({
+                        url 	: uri,
+                        type	: method,
+                        data	: body,
+                        contentType: "application/json",
+                        headers: {"Authorization": auth}
+
+                    }).done(function(data) {
+                        console.log(limit);
+                        console.log(data);
+                        $('#output').text(JSON.stringify(data, null, 4));
+
+                    }).fail(function(data) {
+                        $('#output').text("Failed on " + limit + " with error: \n" + JSON.stringify(data, null, 4));
+                    });
+                }
+
+            }
+            
+            // Send asynchronous query
+            loopMe = function (uri, method, body, auth, max) {
+                for (var i = 0; i < max; i++) {
+                    // And off it goes!
+                    $.ajax({
+                        url 	: uri,
+                        type	: method,
+                        data	: body,
+                        contentType: "application/json",
+                        headers: {"Authorization": auth}
+
+                    }).done(function(data) {
+                        console.log(i + 1);
+                        console.log(data);
+                        $('#output').text(JSON.stringify(data, null, 4));
+
+                    }).fail(function(data) {
+                        $('#output').text("Failed on " + i + " with error: \n" + JSON.stringify(data, null, 4));
+                        i = max;
+                    });
+                }
+            }
+		
+
+			$().ready( function() {
+                // Populate the fields from the page URL
+                let urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('method')) {
+                    $('#method').val( urlParams.get('method') );
+                }
+                if (urlParams.has('uri')) {
+                    $('#uri').val( urlParams.get('uri') );
+                }
+                if (urlParams.has('body')) {
+                    $('#body').val( JSON.stringify(JSON.parse(urlParams.get('body')), null, 4) );
+                }
+			});
+		</script>
+		
+		<style>
+			body {
+				box-sizing: border-box;
+				font-family: courier,monospace;
+				font-size: 15px;
+			}
+		
+			.content {
+				width: 1000px;
+				margin: auto;
+			}
+			
+			.container {
+				display: flex;
+				align-items: stretch;
+			}
+			
+			.container > * {
+				display: inline-block;
+				flex-grow: 1;
+			}
+			
+			.row {
+				display: flex;
+			}
+            
+            input {
+				font-family: courier,monospace;
+				font-size: 15px;
+            }
+			
+			#method {
+				display: inline-block;
+				
+				font-family: courier,monospace;
+				font-size: 15px;
+			}
+			
+			#uri {
+				display: inline-block;
+				flex-grow: 1;
+				
+				padding: 3px;
+			}
+            
+            #user, #pass, #max {
+                flex-basis: 50%;
+                flex-grow: 1;
+            }
+			
+			#output, #body {
+				padding: 5px;
+				margin: 0;
+                
+                flex-basis: 50%;
+				flex-grow: 1;
+				
+				border: solid 1px #d4e1e0;
+			
+				background: #000;
+				color: #d4e1e0;
+				font-family: courier,monospace;
+			}
+            
+            #output {
+                white-space: pre-wrap;
+            }
+			
+            #submit {
+                padding: 0 12px;
+            }
+			
+		</style>
+	</head>
+	<body>
+		<div class="content">
+			<h1>API Snippet Runner</h1>
+			
+			<form id="api-runner" onsubmit="multiQuery(); return false;">
+				<div class="row">
+					<select name="method" id="method">
+						<option>GET</option>
+						<option>POST</option>
+						<option>PUT</option>
+						<option>DELETE</option>
+					</select>
+
+					<input type="text" name="uri" id="uri" placeholder="URI">
+				</div>
+                
+                <div class="row">
+                    <select name="sync" id="sync">
+						<option>asynchronous</option>
+						<option>synchronous</option>
+					</select>
+                    <input type="number" name="max" id="max" placeholder="Send Limit" required="" value="1">
+                    <input type="text" name="user" id="user" placeholder="Username" required="">
+                    <input type="password" name="pass" id="pass" placeholder="Password" required="">
+                    <input type="submit" id="submit">
+                </div>
+				
+				<div class="container">
+					<div class="row">
+						<textarea name="body" id="body" rows="30">{
+    "Request_params_go": "here"
+}
+</textarea>
+				
+                        <pre id="output">{
+    "Output_goes": "here"
+}</pre>
+					</div>
+                </div>
+                    
+            </form>
+				
+		</div>
+	
+</body></html>
